@@ -21,7 +21,7 @@ import { certifications } from '@/lib/data';
 
 // Define custom node types
 const nodeTypes = {
-    cert: CertNode,
+    cert: CertNode as any,
 };
 
 // Generate initial nodes and edges from data
