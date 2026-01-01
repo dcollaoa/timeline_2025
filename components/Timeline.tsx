@@ -13,8 +13,13 @@ import {
     MarkerType,
     ConnectionLineType,
     Position,
+    Panel,
+    useReactFlow,
+    getNodesBounds,
+    getViewportForBounds,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
+import { toPng } from 'html-to-image';
 
 import CertNode from './CertNode';
 import { certifications } from '@/lib/data';
@@ -23,6 +28,76 @@ import { certifications } from '@/lib/data';
 const nodeTypes = {
     cert: CertNode as any,
 };
+
+// ... (keep initialNodes/initialEdges logic same) ...
+// ACTUALLY I CANNOT REPLACE THE WHOLE FILE EASILY WITHOUT KEEPING THE LOGIC.
+// I will just add the imports and the DownloadButton component, then add the Panel to the JSX.
+
+// HELPER FUNCTION FOR DOWNLOAD
+function downloadImage(dataUrl: string) {
+    const a = document.createElement('a');
+    a.setAttribute('download', 'resume-spiral.png');
+    a.setAttribute('href', dataUrl);
+    a.click();
+}
+
+const imageWidth = 2560; // QHD Width
+const imageHeight = 1440; // QHD Height
+
+function DownloadButton() {
+    const { getNodes } = useReactFlow();
+    const onClick = () => {
+        // We want to capture the whole flow, so we calculate the bounds of all nodes
+        const nodesBounds = getNodesBounds(getNodes());
+
+        // Calculate transform to fit all nodes into the QHD dimension with some margin
+        const { x, y, zoom } = getViewportForBounds(
+            nodesBounds,
+            imageWidth,
+            imageHeight,
+            0.1, // min zoom
+            2,   // max zoom
+            50   // padding
+        );
+
+        const viewport = document.querySelector('.react-flow__viewport') as HTMLElement;
+        if (viewport) {
+            toPng(viewport, {
+                backgroundColor: '#ffffff',
+                width: imageWidth,
+                height: imageHeight,
+                style: {
+                    width: imageWidth.toString(),
+                    height: imageHeight.toString(),
+                    transform: `translate(${x}px, ${y}px) scale(${zoom})`,
+                },
+                pixelRatio: 2, // Higher density for crisp text
+            }).then(downloadImage);
+        }
+    };
+
+    return (
+        <Panel position="top-right">
+            <button
+                className="download-btn"
+                onClick={onClick}
+                style={{
+                    padding: '10px 20px',
+                    background: '#0077b5',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '5px',
+                    cursor: 'pointer',
+                    fontWeight: 'bold',
+                    boxShadow: '0 4px 6px rgba(0,0,0,0.1)'
+                }}
+            >
+                Download QHD Image
+            </button>
+        </Panel>
+    );
+}
+
 
 // Generate initial nodes and edges from data
 // Generate initial nodes with a Spiral Layout (Archimedean Spiral)
@@ -158,6 +233,7 @@ export default function Timeline() {
                 }}
             >
                 <Controls />
+                <DownloadButton />
             </ReactFlow>
         </div>
     );
