@@ -103,99 +103,73 @@ function DownloadButton() {
 // Generate initial nodes with a Spiral Layout (Archimedean Spiral)
 // Generate initial nodes with a Spiral Layout (Archimedean Spiral)
 const initialNodes: Node[] = [];
-const centerX = 0;
-const centerY = 0;
-const gap = 350; // Distance between nodes along the curve
-const spiralGrowth = 80;
-let theta = 0;
+const xGap = 400; // Horizontal distance
+const yGap = 350; // Vertical distance
+const numCols = 2; // 2 columns
 
-// Helper to determine handle positions based on angle
-const getHandlePositions = (angle: number) => {
-    // Normalize angle to 0-2PI
-    const normAngle = angle % (2 * Math.PI);
+// Helper to determine handles based on neighbor positions
+const getHandlesForZigZag = (i: number, count: number) => {
+    const row = Math.floor(i / numCols);
 
-    // Logic:
-    // If moving roughly Right (0): Source Right, Target Left
-    // If moving vaguely Down (PI/2): Source Bottom, Target Top
-    // If moving roughly Left (PI): Source Left, Target Right
-    // If moving roughly Up (3PI/2): Source Top, Target Bottom
-
-    // We want the flow to be "Outward".
-    // So Source should be on the side facing "out" (roughly angle direction)
-    // Target should be on the side facing "in" (opposite to angle)
-
-    // Rough quadrants
-    // 0 +/- PI/4 (Right)
-    // PI/2 +/- PI/4 (Down)
-    // PI +/- PI/4 (Left)
-    // 3PI/2 +/- PI/4 (Up)
-
-    // Using cosine/sine to determine dominant direction
-    const cos = Math.cos(angle);
-    const sin = Math.sin(angle);
-
-    if (Math.abs(cos) > Math.abs(sin)) {
-        // Horizontal dominant
-        if (cos > 0) return { source: Position.Right, target: Position.Left };
-        return { source: Position.Left, target: Position.Right };
-    } else {
-        // Vertical dominant
-        if (sin > 0) return { source: Position.Bottom, target: Position.Top };
-        return { source: Position.Top, target: Position.Bottom };
+    // Determine target (input)
+    let targetPosition = Position.Left;
+    if (i > 0) {
+        const prevRow = Math.floor((i - 1) / numCols);
+        // If coming from same row
+        if (prevRow === row) {
+            // Even row: Left -> Right. Coming from Left. Target Left.
+            // Odd row: Right -> Left. Coming from Right. Target Right.
+            targetPosition = (row % 2 === 0) ? Position.Left : Position.Right;
+        } else {
+            // Coming from row above
+            targetPosition = Position.Top;
+        }
     }
+
+    // Determine source (output)
+    let sourcePosition = Position.Right;
+    if (i < count - 1) {
+        const nextRow = Math.floor((i + 1) / numCols);
+        if (nextRow === row) {
+            // Going to same row
+            sourcePosition = (row % 2 === 0) ? Position.Right : Position.Left;
+        } else {
+            // Going down
+            sourcePosition = Position.Bottom;
+        }
+    }
+
+    return { sourcePosition, targetPosition };
 };
 
 certifications.forEach((cert, index) => {
-    if (index === 0) {
-        initialNodes.push({
-            id: cert.id,
-            type: 'cert',
-            position: { x: centerX, y: centerY },
-            sourcePosition: Position.Right, // Start moving right
-            targetPosition: Position.Left,
-            data: {
-                label: cert.label,
-                image: cert.image,
-                date: cert.date,
-                manufacturer: cert.manufacturer,
-                index: 1,
-            },
-        });
-        theta = 1.0;
-        return;
+    const row = Math.floor(index / numCols);
+    let col = index % numCols;
+
+    // If odd row, invert column index for zig-zag
+    if (row % 2 !== 0) {
+        col = (numCols - 1) - col;
     }
 
-    const r = 200 + spiralGrowth * theta;
-    const x = centerX + r * Math.cos(theta);
-    const y = centerY + r * Math.sin(theta);
+    const x = col * xGap;
+    const y = row * yGap;
 
-    // Determine direction from previous node to this node roughly
-    // Or just based on position relative to center?
-    // Actually, theta determines where we are relative to center.
-    // Flow is clockwise-ish?
-    // r = a + b*theta is spiraling out.
-    // Tangent is perpendicular to radius?
-
-    // Let's use the position on the circle to determine handles.
-    const { source, target } = getHandlePositions(theta);
+    const { sourcePosition, targetPosition } = getHandlesForZigZag(index, certifications.length);
 
     initialNodes.push({
         id: cert.id,
         type: 'cert',
         position: { x, y },
-        sourcePosition: source,
-        targetPosition: target,
+        sourcePosition,
+        targetPosition,
         data: {
             label: cert.label,
             image: cert.image,
             date: cert.date,
             manufacturer: cert.manufacturer,
-            index: index + 1, // Add 1-based index
+            index: index + 1,
         },
     });
-
-    const deltaTheta = gap / r;
-    theta += deltaTheta;
 });
 
 const initialEdges: Edge[] = certifications.slice(0, -1).map((cert, index) => ({
