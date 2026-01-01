@@ -105,7 +105,7 @@ function DownloadButton() {
 const initialNodes: Node[] = [];
 const xGap = 400; // Horizontal distance
 const yGap = 350; // Vertical distance
-const numCols = 2; // 2 columns
+const numCols = 4; // 4 columns
 
 // Helper to determine handles based on neighbor positions
 const getHandlesForZigZag = (i: number, count: number) => {
